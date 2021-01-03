@@ -1,0 +1,86 @@
+import pandas as pd
+import  numpy as np
+import matplotlib.pyplot as plt
+from sklearn import metrics
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.model_selection import train_test_split, cross_val_score, cross_val_predict, StratifiedKFold
+import warnings
+warnings.filterwarnings('ignore')
+
+#import data
+diabetes_data = pd.read_csv('C:/Users/HP/Desktop/diabetes.csv')
+
+X =  diabetes_data.drop(["Outcome"],axis = 1)
+y = diabetes_data["Outcome"]
+#train and test
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify = y, random_state = 56)
+# StratifiedKFold class performs stratified sampling to produce folds that contain a representative ratio of each class.
+cv = StratifiedKFold(n_splits=10, shuffle = False, random_state = 76)
+
+# Logistic Regression
+logreg = LogisticRegression()
+# fit model
+logreg.fit(X_train, y_train)
+# Make class predictions for the validation set.
+y_pred_class_logreg = cross_val_predict(logreg, X_train, y_train, cv = cv)
+# predicted probabilities for class 1, probabilities of positive class
+y_pred_prob_logreg = cross_val_predict(logreg, X_train, y_train, cv = cv, method="predict_proba")
+y_pred_prob_logreg_class1 = y_pred_prob_logreg[:, 1]
+
+# SGD Classifier
+SGD = SGDClassifier()
+# fit model
+SGD.fit(X_train, y_train)
+# make class predictions for the validation set
+y_pred_class_SGD = cross_val_predict(SGD, X_train, y_train, cv = cv)
+# predicted probabilities for class 1
+y_pred_prob_SGD = cross_val_predict(SGD, X_train, y_train, cv = cv, method="decision_function")
+# Random Forest Classifier
+clf_rfc = RandomForestClassifier()
+# fit model
+rfc.fit(X_train, y_train)
+# make class predictions for the validation set
+y_pred_class_rfc = cross_val_predict(rfc, X_train, y_train, cv = cv)
+# predicted probabilities for class 1
+y_pred_prob_rfc = cross_val_predict(rfc, X_train, y_train, cv = cv, method="predict_proba")
+y_pred_prob_rfc_class1 = y_pred_prob_rfc[:, 1]
+
+#null accuracy
+
+class BaseClassifier(BaseEstimator):
+    def fit(self, X, y=None):
+        pass
+    def predict(self, X):
+        return np.zeros((len(X), 1), dtype=bool)
+    
+base_clf = BaseClassifier()
+cross_val_score(base_clf, X_train, y_train, cv=10, scoring="accuracy").mean()
+
+
+acc_logreg = cross_val_score(logreg, X_train, y_train, cv = cv, scoring = 'accuracy').mean()
+acc_SGD = cross_val_score(SGD, X_train, y_train, cv = cv, scoring = 'accuracy').mean()
+acc_rfc = cross_val_score(rfc, X_train, y_train, cv = cv, scoring = 'accuracy').mean()
+
+acc_logreg, acc_SGD, acc_rfc
+
+fpr_logreg, tpr_logreg, thresholds_logreg = metrics.roc_curve(y_train, y_pred_prob_logreg_class1)
+fpr_rfc, tpr_rfc, thresholds_rfc = metrics.roc_curve(y_train, y_pred_prob_rfc_class1)
+fpr_SGD, tpr_SGD, thresholds_SGD = metrics.roc_curve(y_train, y_pred_prob_SGD)
+
+plt.plot(fpr_logreg, tpr_logreg, label="logreg")
+plt.plot(fpr_rfc, tpr_rfc, label="rfc")
+plt.plot(fpr_SGD, tpr_SGD, label="SGD")
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.0])
+plt.rcParams['font.size'] = 12
+plt.title('ROC curve')
+plt.xlabel('False Positive Rate (1 - Specificity)')
+plt.ylabel('True Positive Rate (Sensitivity)')
+plt.legend(loc="lower right", fontsize=10)
+plt.grid(True)
+
+
+
+
+
